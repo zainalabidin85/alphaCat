@@ -1,4 +1,4 @@
-# 📘 **alphaCat – Raspberry Pi Vision System (YOLO + Appsink + ESP32 Sprayer)**  
+# 📘 **alphaCat – Raspberry Pi Vision System (YOLO + ESP32 Sprayer)**  
 ### **Smart Animal Detection & Water Spray Automation – Agriculture Engineering UniMAP**
 
 
