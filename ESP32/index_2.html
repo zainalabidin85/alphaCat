@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>alphaCat Controller</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body { text-align: center; font-family: Arial, sans-serif; }
+        button { padding: 10px; margin: 5px; font-size: 16px; width: 120px; }
+        .slider { width: 80%; }
+        .info { font-size: 18px; margin: 10px; }
+    </style>
+</head>
+<body>
+    <h2>alphaCat Controller</h2>
+    <button onclick="sendMotor('Forward')">Forward</button>
+    <button onclick="sendMotor('Reverse')">Reverse</button>
+    <button onclick="sendMotor('Stopped')">Stop</button>
+
+    <p class="info">Motor Speed: <span id="speedValue">0</span>%</p>
+    <input type="range" min="0" max="100" class="slider" id="speedSlider"
+           oninput="sendSpeed(this.value)">
+
+    <h3>Relay</h3>
+    <p class="info">Relay: <span id="relayStatus">OFF</span></p>
+    <button onclick="toggleRelay()">Toggle</button>
+
+    <h3>Servo</h3>
+    <p class="info">Angle: <span id="angleValue">90</span></p>
+    <input type="range" min="0" max="180" class="slider"
+           oninput="sendServo(this.value)">
+    
+    <script>
+        var ws = new WebSocket("ws://" + location.host + "/ws");
+
+        ws.onmessage = function(event) {
+            var d = JSON.parse(event.data);
+            document.getElementById('speedValue').innerText = d.motorSpeed;
+            document.getElementById('relayStatus').innerText = d.relayState ? "ON" : "OFF";
+            document.getElementById('angleValue').innerText = d.servoAngle;
+        };
+
+        function sendCmd(data) {
+            if (ws.readyState === WebSocket.OPEN)
+                ws.send(JSON.stringify(data));
+        }
+
+        function sendMotor(s) { sendCmd({motorState:s}); }
+        function sendSpeed(v) { sendCmd({motorSpeed:parseInt(v)}); }
+        function toggleRelay() {
+            let cur = document.getElementById('relayStatus').innerText;
+            sendCmd({ relayState: cur !== "ON" });
+        }
+        function sendServo(a) { sendCmd({servoAngle:parseInt(a)}); }
+    </script>
+</body>
+</html>
