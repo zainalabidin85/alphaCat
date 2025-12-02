@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>alphaCat WiFi Setup</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body { font-family: Arial; text-align:center; padding:30px; }
+        input { width:90%; padding:10px; margin:10px; font-size:18px; }
+        button { padding:15px 30px; font-size:18px; }
+    </style>
+</head>
+<body>
+    <h2>alphaCat WiFi Setup</h2>
+    <form method="POST" action="/savewifi">
+        <input name="ssid" placeholder="WiFi SSID">
+        <input name="pass" type="password" placeholder="WiFi Password">
+        <button type="submit">Save & Connect</button>
+    </form>
+</body>
+</html>
