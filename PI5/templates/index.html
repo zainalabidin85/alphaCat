@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>alphaCat Dashboard</title>
+    <style>
+        body { font-family: Arial; text-align: center; background: #111; color: #fff; }
+        #videoCanvas { border: 2px solid #fff; cursor: crosshair; }
+        button { padding: 10px 20px; margin: 5px; font-size: 14px; }
+    </style>
+</head>
+<body>
+<h2>UniMAP - Agricultural Engineering</h2>
+<label>Sprayer IP Address:</label>
+<input type="text" id="esp_ip" placeholder="192.168.1.88" style="font-size:14px;">
+<button onclick="saveESPIP()"> 💾 Save IP</button>
+
+<br>
+<img id="videoSource" src="/stream" style="display:none">
+<canvas id="videoCanvas" width="640" height="480"></canvas>
+<div id="statusBar"
+     style="display:none;
+     background:#28a745;
+     padding:10px;
+     margin:10px;
+     border-radius:5px;
+     font-size:14px;">
+</div>
+
+<br>
+<button onclick="saveLine()">💾 Save Line</button>
+<button onclick="startDetection()">🔍 Start Detection</button>
+<button onclick="stopDetection()">🛑 Stop Detection</button>
+<button onclick="sprayTest()">💦 Spray Test</button>
+
+<script src="/static/script.js"></script>
+
+</body>
+</html>
