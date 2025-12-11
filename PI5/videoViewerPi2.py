@@ -163,7 +163,7 @@ class VideoViewerPi:
 
 
     # --------------------------------------------------------
-    # BUILD NORMAL PIPELINE (unchanged)
+    # BUILD NORMAL PIPELINE
     # --------------------------------------------------------
     def build_pipeline(self, inp, outp):
 
@@ -196,14 +196,14 @@ class VideoViewerPi:
 
             depay = ("rtpjpegdepay ! jpegdec"
                      if self.input_codec=="mjpeg"
-                     else "rtph264depay ! h264parse ! avdec_h264")
+                     else "rtph264depay ! avdec_h264")
 
             src = f"{base} caps=\"{caps}\" ! {depay} ! videoconvert"
 
         elif inp["type"] == "rtsp":
             src = (
                 f"rtspsrc location=\"{inp['uri']}\" latency=0 protocols=udp name=src "
-                "! queue ! rtph264depay ! h264parse ! avdec_h264 ! videoconvert"
+                "! queue ! rtph264depay ! avdec_h264 ! videoconvert"
             )
 
         else:
@@ -236,10 +236,18 @@ class VideoViewerPi:
 
 
     # --------------------------------------------------------
-    # NEW: BUILD APPSINK PIPELINE
+    # NEW: APPSINK PIPELINE
     # --------------------------------------------------------
     def build_appsink_pipeline(self, inp):
         # ---------- INPUT ----------
+        if inp["type"] == "rtsp":
+            return (
+                f"rtspsrc location=\"{inp['uri']}\" latency=0 protocols=udp ! "
+                "rtph264depay ! avdec_h264 ! videoconvert ! "
+                "video/x-raw,format=BGR ! "
+                "appsink name=appsink max-buffers=1 drop=true emit-signals=true sync=false"
+            )
+        
         if inp["type"] in ("v4l2", "csi"):  # Add CSI support
             if inp["type"] == "v4l2":
                 dev = inp["device"]
@@ -263,7 +271,7 @@ class VideoViewerPi:
                     "appsink name=appsink max-buffers=1 drop=true emit-signals=true sync=false"
                 )
 
-        raise ValueError("Appsink mode currently supports only V4L2/CSI input")
+        raise ValueError("Appsink mode currently supports only V4L2 / CSI / RTSP input")
 
 
     # --------------------------------------------------------
@@ -394,7 +402,7 @@ class VideoViewerPi:
             src = (
                 f"udpsrc multicast-group={inp['host']} auto-multicast=true port={inp['port']} "
                 "caps=\"application/x-rtp,media=video,encoding-name=H264,payload=96\" ! "
-                "rtph264depay ! h264parse ! avdec_h264 ! videoconvert "
+                "rtph264depay ! avdec_h264 ! videoconvert "
             )
 
         # -----------------------------
@@ -404,7 +412,7 @@ class VideoViewerPi:
             src = (
                 f"udpsrc port={inp['port']} ! "
                 "application/x-rtp,media=video,encoding-name=H264,payload=96 ! "
-                "rtph264depay ! h264parse ! avdec_h264 ! videoconvert "
+                "rtph264depay ! avdec_h264 ! videoconvert "
             )
 
         # -----------------------------
@@ -413,7 +421,7 @@ class VideoViewerPi:
         elif t == "rtsp":
             src = (
                 f"rtspsrc location=\"{inp['uri']}\" latency=0 protocols=udp name=src "
-                "! queue ! rtph264depay ! h264parse ! avdec_h264 ! videoconvert "
+                "! queue ! rtph264depay ! avdec_h264 ! videoconvert "
             )
 
         else:
