@@ -12,7 +12,7 @@ A fully web-controlled agriculture automation module with ESP32, including:
 - **WebSocket streaming** for instant browser feedback
 - **Full compatibility with Arduino IDE 2.x**
 
-This project is designed for **agriculture engineering**, precision spraying, IoT-enabled robotics, research, and prototyping.
+This project is designed for **agricultural engineering**, precision spraying, IoT-enabled robotics, research, and prototyping.
 
 ---
 
@@ -272,7 +272,7 @@ alphaCat
 
 ### 💬 UI not loading CSS/JS  
 Cause: missing files  
-Fix: upload via `/upload`
+Fix: upload via `http://192.168.4.1/upload`
 
 ### 💬 “Handler did not handle request”  
 Cause: SPIFFS empty  
@@ -285,17 +285,8 @@ Fix: check I2C address (0x27)
 Fix: ensure GPIO14 → GND  
 Configured as `INPUT_PULLUP`
 
----
-
-# ⭐ Future Improvements
-
-- Add password protection to `/upload`
-- Add OTA firmware uploader  
-- Add drag & drop multi-file upload
-- Add auto-format SPIFFS button  
-- Add dark/light mode UI  
-- Add buzzer for reset countdown  
-- Add JSON configuration file in SPIFFS
+### 💬 WiFi reset when pump trigger
+Fix: Solder a capacitor rated 470 uF 25V near pump wires power.
 
 ---
 
