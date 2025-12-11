@@ -1,5 +1,5 @@
-# 📘 **alphaCat – Raspberry Pi Vision System (YOLO + ESP32 Sprayer)**  
-### **Smart Animal Detection & Water Spray Automation – Agriculture Engineering UniMAP**
+# 📘 **alphaCat – Raspberry Pi Vision System (YOLO) + ESP32 Sprayer**  
+### **Smart Animal Detection & Water Spray Automation – Agricultural Engineering UniMAP**
 
 
 ---
@@ -11,11 +11,11 @@
 ✔ Streams video from RTSP/USB/CSI cameras  
 ✔ Runs **YOLO11** object detection  
 ✔ Allows the user to draw a detection line  
-✔ Triggers an **ESP32-based sprayer** when a cat or person crosses the line  
+✔ Triggers an **ESP32-based sprayer** when a cat or YOLO object crosses the line  
 ✔ Displays live video + bounding boxes + line overlay in a web UI  
 ✔ Supports high-performance **appsink** pipeline for real-time inference  
 
-Built for agricultural automation projects (UniMAP Agriculture Engineering) — especially for detecting cat intrusion in farms.
+Built for agricultural automation projects (UniMAP Agricultural Engineering) — especially for detecting cat intrusion outside house area.
 
 ---
 
@@ -48,6 +48,19 @@ sudo apt install -y python3-pip python3-opencv git \
     gstreamer1.0-rtsp
 ```
 ### Python dependencies
+Rapsberry Pi OS normally not allowing installing dependencies without creating virtual environment.
+Create virtual environment
+```
+python3 -m venv venv --system-site-packages
+```
+This prompt will create virtual environment inside venv folder.
+To further install python extension library. Activate the environment by typing:
+
+```
+source venv/bin/activate
+```
+Follow by the following line..
+
 ```
 pip3 install ultralytics flask numpy requests
 ```
@@ -55,7 +68,7 @@ pip3 install ultralytics flask numpy requests
 
 # 🎥 Running
 
-To run the alphaCat, reside to the approriate folder, then;
+To run the alphaCat, go to the approriate folder, then;
 ```
 python3 app.py
 ```
@@ -120,7 +133,7 @@ Sprayer activation is done via simple HTTP GET.
 # 🧪 More class to trigger by ESP32 Sprayer
 
 - Modify the config.json file to add more yolo object
-- Example;
+- Example, to add bird class;
   
 ```
 {
@@ -129,9 +142,8 @@ Sprayer activation is done via simple HTTP GET.
   "detect_objects": ["cat","person","bird"]
 }
 ```
-- This additional class to trigger sprayer must be further modifiying in the detection.py file
-- Find this function update_target_objects(self) and modify as follows:
-- Example;
+- This additional class to switch on the sprayer must be further modifiying the code in the detection.py file
+- Find this function update_target_objects(self) and add "bird" class as follows:
   
 ```
     def update_target_objects(self):
