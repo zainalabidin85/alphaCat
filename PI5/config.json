@@ -1,11 +1,15 @@
 {
-    "line": [
-        0.7390625,
-        0.300390625,
-        0.7765625,
-        0.9670572916666667
-    ],
-    "esp32_ip": "192.168.0.2",
+    "camera": {
+        "type": "device",
+        "device": "/dev/video0",
+        "rtsp": {
+            "username": "",
+            "password": "",
+            "url": "10.170.8.37:554/stream1"
+        }
+    },
+    "line": [],
+    "esp32_ip": "10.170.8.63",
     "detect_objects": [
         "cat",
         "person"
