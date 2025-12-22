@@ -58,7 +58,7 @@ def build_camera_input(cam_cfg):
         return usb_dev
 
     # --- NO CAMERA ---
-    print("[ERROR] No valid camera source available")
+    print("[WARN] No valid camera source available")
     return None
 
 def start_viewer():
