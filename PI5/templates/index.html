@@ -1,38 +1,237 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>alphaCat Dashboard</title>
-    <style>
-        body { font-family: Arial; text-align: center; background: #111; color: #fff; }
-        #videoCanvas { border: 2px solid #fff; cursor: crosshair; }
-        button { padding: 10px 20px; margin: 5px; font-size: 14px; }
-    </style>
-</head>
-<body>
-<h2>UniMAP - Agricultural Engineering</h2>
-<label>Sprayer IP Address:</label>
-<input type="text" id="esp_ip" placeholder="192.168.1.88" style="font-size:14px;">
-<button onclick="saveESPIP()"> 💾 Save IP</button>
+<meta charset="UTF-8">
+<title>alphaCat Dashboard</title>
 
-<br>
-<img id="videoSource" src="/stream" style="display:none">
-<canvas id="videoCanvas" width="640" height="480"></canvas>
-<div id="statusBar"
-     style="display:none;
-     background:#28a745;
-     padding:10px;
-     margin:10px;
-     border-radius:5px;
-     font-size:14px;">
+<style>
+/* ===== GLOBAL ===== */
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #111;
+    color: #fff;
+}
+
+/* ===== TOP BAR ===== */
+#topBar {
+    display: flex;
+    align-items: center;
+    height: 48px;
+    background: #1e1e1e;
+    border-bottom: 1px solid #2a2a2a;
+}
+
+#menuBtn {
+    width: 48px;
+    text-align: center;
+    font-size: 20px;
+    cursor: pointer;
+}
+
+#titleWrap {
+    flex: 1;
+    text-align: center;
+}
+
+#titleWrap h2 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    opacity: 0.95;
+}
+
+/* ===== LAYOUT ===== */
+#container {
+    display: flex;
+    height: calc(100vh - 48px);
+}
+
+/* ===== SIDE PANEL ===== */
+#sidePanel {
+    width: 300px;
+    background: #1b1b1b;
+    padding: 15px;
+    display: none;
+    box-sizing: border-box;
+    border-right: 1px solid #2a2a2a;
+}
+
+#sidePanel h3 {
+    margin-top: 0;
+    font-size: 16px;
+}
+
+/* Form alignment (IMPORTANT) */
+#sidePanel input,
+#sidePanel select,
+#sidePanel button {
+    width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 8px;
+    font-size: 14px;
+    padding: 6px;
+}
+
+#sidePanel button {
+    cursor: pointer;
+}
+
+.lock {
+    font-size: 12px;
+    color: #aaa;
+    margin-bottom: 6px;
+}
+
+/* ===== MAIN CONTENT ===== */
+#mainContent {
+    flex: 1;
+    text-align: center;
+    padding: 15px;
+}
+
+#videoCanvas {
+    border: 2px solid #fff;
+    cursor: crosshair;
+}
+
+#statusBar {
+    display: none;
+    background: #28a745;
+    padding: 8px;
+    margin: 10px auto;
+    border-radius: 4px;
+    width: fit-content;
+    font-size: 14px;
+}
+
+/* Detection buttons */
+.ctrlBtn {
+    padding: 8px 14px;
+    margin: 5px;
+    font-size: 14px;
+    cursor: pointer;
+}
+</style>
+</head>
+
+<body>
+
+<!-- ================= TOP BAR ================= -->
+<div id="topBar">
+    <span id="menuBtn" onclick="togglePanel()">☰</span>
+    <div id="titleWrap">
+        <h2>alphaCat – Agricultural Engineering</h2>
+    </div>
 </div>
 
-<br>
-<button onclick="saveLine()">💾 Save Line</button>
-<button onclick="startDetection()">🔍 Start Detection</button>
-<button onclick="stopDetection()">🛑 Stop Detection</button>
-<button onclick="sprayTest()">💦 Spray Test</button>
+<div id="container">
 
+<!-- ================= SIDE PANEL ================= -->
+<div id="sidePanel">
+
+    <h3>Camera Source</h3>
+
+    <select id="camType">
+        <option value="usb">USB Camera</option>
+        <option value="rtsp">IP Camera (RTSP)</option>
+    </select>
+
+    <div id="rtspSummary" style="display:none;">
+        <div class="lock">🔒 RTSP credentials stored</div>
+        <button onclick="toggleRtspEdit()">Edit Camera</button>
+    </div>
+
+    <div id="rtspFields" style="display:none;">
+        <input id="rtspUser" placeholder="RTSP Username">
+        <input id="rtspPass" type="password" placeholder="RTSP Password">
+        <input id="rtspUrl" placeholder="ip:port/stream">
+        <button onclick="saveCamera()">Save Camera</button>
+        <button onclick="toggleRtspEdit()">Cancel</button>
+    </div>
+
+    <hr>
+
+    <h3>Sprayer Controller</h3>
+    <input id="esp_ip" placeholder="ESP32 IP (e.g. 192.168.1.88)">
+    <button onclick="saveESPIP()">Save IP</button>
+
+</div>
+
+<!-- ================= MAIN CONTENT ================= -->
+<div id="mainContent">
+
+    <img id="videoSource" src="/stream" style="display:none">
+    <canvas id="videoCanvas" width="640" height="480"></canvas>
+
+    <div id="statusBar"></div>
+
+    <br>
+    <!-- KEEP CORE CONTROLS -->
+    <button class="ctrlBtn" onclick="saveLine()">💾 Save Line</button>
+    <button class="ctrlBtn" onclick="startDetection()">🔍 Start Detection</button>
+    <button class="ctrlBtn" onclick="stopDetection()">🛑 Stop Detection</button>
+    <button class="ctrlBtn" onclick="sprayTest()">💦 Spray Test</button>
+
+</div>
+</div>
+
+<!-- ================= JS ================= -->
 <script src="/static/script.js"></script>
+
+<script>
+function togglePanel() {
+    const p = document.getElementById("sidePanel");
+    p.style.display = (p.style.display === "none" || p.style.display === "")
+        ? "block" : "none";
+}
+
+function closePanel() {
+    document.getElementById("sidePanel").style.display = "none";
+}
+
+const camType = document.getElementById("camType");
+const rtspSummary = document.getElementById("rtspSummary");
+const rtspFields = document.getElementById("rtspFields");
+
+camType.onchange = () => {
+    if (camType.value === "rtsp") {
+        rtspSummary.style.display = "block";
+        rtspFields.style.display = "none";
+    } else {
+        rtspSummary.style.display = "none";
+        rtspFields.style.display = "none";
+    }
+};
+
+function toggleRtspEdit() {
+    rtspFields.style.display =
+        rtspFields.style.display === "none" ? "block" : "none";
+}
+
+function saveCamera() {
+    const payload = {
+        type: camType.value,
+        device: "/dev/video0",
+        rtsp: {
+            username: document.getElementById("rtspUser").value,
+            password: document.getElementById("rtspPass").value,
+            url: document.getElementById("rtspUrl").value
+        }
+    };
+
+    fetch("/set_camera", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(payload)
+    })
+    .then(r => r.json())
+    .then(() => {
+        rtspFields.style.display = "none";
+        closePanel();           // ✅ AUTO-CLOSE
+    });
+}
+</script>
 
 </body>
 </html>
