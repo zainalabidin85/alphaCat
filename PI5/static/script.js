@@ -4,50 +4,61 @@
 let canvas = document.getElementById("videoCanvas");
 let ctx = canvas.getContext("2d");
 
-// The hidden video stream source
+// Hidden MJPEG stream source
 let img = document.getElementById("videoSource");
 
 // YOLO boxes from backend
 let yolo_boxes = [];
 
-// Line drawing (user-defined)
+// Line drawing
 let drawing = false;
 let line = [];
 
 // ----------------------------------------
-// SHOWING STATUS
-//-----------------------------------------
-function showStatus(msg,color = "#28a745"){
+// STATUS BAR
+// ----------------------------------------
+function showStatus(msg, color = "#28a745") {
     const bar = document.getElementById("statusBar");
     bar.style.background = color;
     bar.innerText = msg;
     bar.style.display = "block";
-    
+
     setTimeout(() => {
         bar.style.display = "none";
     }, 3000);
 }
+
 // ----------------------------------------
-// FETCH YOLO BOXES (poll /yolo_data)
+// FETCH YOLO BOXES (ROBUST POLLING)
 // ----------------------------------------
 function fetchYOLO() {
     fetch("/yolo_data")
         .then(res => res.json())
         .then(data => {
-            yolo_boxes = data; // array of {cls, conf, x1, y1, x2, y2}
+            yolo_boxes = data;
+        })
+        .catch(() => {
+            console.warn("YOLO fetch failed");
+        })
+        .finally(() => {
+            setTimeout(fetchYOLO, 100); // 10 FPS
         });
-
-    setTimeout(fetchYOLO, 100);  // 10 FPS polling
 }
 
 fetchYOLO();
-
 
 // ----------------------------------------
 // DRAW LOOP (60 FPS)
 // ----------------------------------------
 function drawLoop() {
-    // Draw live video
+
+    // Wait until MJPEG frame is ready
+    if (!img.complete || img.naturalWidth === 0) {
+        requestAnimationFrame(drawLoop);
+        return;
+    }
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
     // ----------------------------
@@ -56,39 +67,39 @@ function drawLoop() {
     if (line.length === 4) {
         ctx.strokeStyle = "red";
         ctx.lineWidth = 3;
-
         ctx.beginPath();
-        ctx.moveTo(line[0] * canvas.width,  line[1] * canvas.height);
-        ctx.lineTo(line[2] * canvas.width,  line[3] * canvas.height);
+        ctx.moveTo(line[0] * canvas.width, line[1] * canvas.height);
+        ctx.lineTo(line[2] * canvas.width, line[3] * canvas.height);
         ctx.stroke();
     }
 
     // ----------------------------
     // Draw YOLO boxes
     // ----------------------------
-    yolo_boxes.forEach(b => {
-        // Scale boxes from absolute pixels to canvas size
-        let scaleX = canvas.width  / img.naturalWidth;
-        let scaleY = canvas.height / img.naturalHeight;
+    let scaleX = canvas.width / img.naturalWidth;
+    let scaleY = canvas.height / img.naturalHeight;
 
+    yolo_boxes.forEach(b => {
         let x1 = b.x1 * scaleX;
         let y1 = b.y1 * scaleY;
         let x2 = b.x2 * scaleX;
         let y2 = b.y2 * scaleY;
 
-        // Draw box
+        // Box
         ctx.strokeStyle = "lime";
         ctx.lineWidth = 2;
         ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
 
-        // Draw label
-        let label = `${b.cls} (${b.conf.toFixed(2)})`;
+        // Label
+        const label = `${b.cls} (${b.conf.toFixed(2)})`;
+        ctx.font = "14px Arial";
+        const textW = ctx.measureText(label).width;
+
         ctx.fillStyle = "rgba(0,255,0,0.7)";
-        ctx.fillRect(x1, y1 - 20, ctx.measureText(label).width + 10, 20);
+        ctx.fillRect(x1, y1 - 18, textW + 8, 18);
 
         ctx.fillStyle = "black";
-        ctx.font = "16px Arial";
-        ctx.fillText(label, x1 + 5, y1 - 5);
+        ctx.fillText(label, x1 + 4, y1 - 4);
     });
 
     requestAnimationFrame(drawLoop);
@@ -96,9 +107,8 @@ function drawLoop() {
 
 drawLoop();
 
-
 // ----------------------------------------
-// MOUSE EVENTS FOR LINE DRAWING
+// LINE DRAWING (MOUSE EVENTS)
 // ----------------------------------------
 canvas.addEventListener("mousedown", e => {
     drawing = true;
@@ -114,12 +124,11 @@ canvas.addEventListener("mouseup", e => {
     line[3] = (e.clientY - r.top) / canvas.height;
 });
 
-
 // ----------------------------------------
 // SAVE ESP32 IP
 // ----------------------------------------
 function saveESPIP() {
-    let ip = document.getElementById("esp_ip").value;
+    let ip = document.getElementById("esp_ip").value.trim();
 
     if (!ip) {
         alert("Please enter IP.");
@@ -128,13 +137,21 @@ function saveESPIP() {
 
     fetch("/set_esp_ip", {
         method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({ ip: ip })
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ip })
     })
     .then(res => res.json())
-    .then(data => showStatus("ESP32 IP updated to: " + data.ip));
+    .then(data => {
+        showStatus("ESP32 IP updated to: " + data.ip);
+        if (typeof closePanel === "function") {
+            closePanel();
+        }
+    })
+    .catch(err => {
+        alert("Failed to save ESP32 IP");
+        console.error(err);
+    });
 }
-
 
 // ----------------------------------------
 // SAVE LINE
@@ -142,26 +159,26 @@ function saveESPIP() {
 function saveLine() {
     fetch("/save_line", {
         method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({ line: line })
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ line })
     })
     .then(() => showStatus("Detection line saved"));
 }
 
-
 // ----------------------------------------
 // DETECTION CONTROL
 // ----------------------------------------
-function startDetection() { 
+function startDetection() {
     fetch("/start_detection")
-    .then(() => showStatus("Detection started")); 
-    }
-    
-function stopDetection()  { 
+        .then(() => showStatus("Detection started"));
+}
+
+function stopDetection() {
     fetch("/stop_detection")
-    .then(() => showStatus("Detection stopped", "#dc3545"));
-     }
-     
-function sprayTest()      { 
+        .then(() => showStatus("Detection stopped", "#dc3545"));
+}
+
+function sprayTest() {
     fetch("/spray_test")
-    .then(() => showStatus("Spray triggered!", "#17a2b8")); }
+        .then(() => showStatus("Spray triggered!", "#17a2b8"));
+}
