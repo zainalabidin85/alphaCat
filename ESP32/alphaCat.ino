@@ -3,6 +3,12 @@
  * Supports Arduino IDE 2.x (no plugin SPIFF needed)
  * alphaCat.ino flash normally via Arduino IDE
  * data files uploaded via browser visit http://<ESP-IP>/upload
+ *
+ * V1 Upgrade:
+ *  - Short press RESET  : LCD backlight toggle
+ *  - Long press RESET   : WiFi reset (unchanged logic)
+ *  - LCD shows RSSI (ASCII bars) + IP
+ *  - Auto refresh LCD every 5 seconds
  ****************************************************/
 
 #include <Arduino.h>
@@ -20,6 +26,8 @@
  * LCD
  ****************************************************/
 LiquidCrystal_I2C lcd(0x27, 16, 2);
+bool lcdBacklightOn = true;
+unsigned long lastLCDUpdate = 0;
 
 /****************************************************
  * USER CONFIG
@@ -33,6 +41,9 @@ LiquidCrystal_I2C lcd(0x27, 16, 2);
 #define MOTOR_DIR1 26
 #define MOTOR_DIR2 27
 #define SERVO_PIN 13
+
+#define RESET_LONG_MS   5000
+#define LCD_REFRESH_MS  5000
 
 Preferences prefs;
 AsyncWebServer server(80);
@@ -48,7 +59,6 @@ int servoAngle = 90;
 String savedSSID, savedPASS;
 bool wifiConnected = false;
 
-
 /****************************************************
  * PWM: LEDC Core 3.x
  ****************************************************/
@@ -59,6 +69,39 @@ void updatePWM() {
 
     ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, duty);
     ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0);
+}
+
+/****************************************************
+ * RSSI → ASCII BAR
+ ****************************************************/
+String rssiBars(int rssi) {
+    if (rssi > -55) return "|||||";
+    if (rssi > -65) return "|||| ";
+    if (rssi > -75) return "|||  ";
+    if (rssi > -85) return "||   ";
+    return "|    ";
+}
+
+/****************************************************
+ * LCD STATUS DISPLAY
+ ****************************************************/
+void showStatusLCD() {
+    lcd.setCursor(0, 0);
+    lcd.print("                ");
+    lcd.setCursor(0, 1);
+    lcd.print("                ");
+
+    lcd.setCursor(0, 0);
+    if (wifiConnected && WiFi.status() == WL_CONNECTED) {
+        lcd.print("WiFi ");
+        lcd.print(rssiBars(WiFi.RSSI()));
+        lcd.setCursor(0, 1);
+        lcd.print(WiFi.localIP().toString());
+    } else {
+        lcd.print("AP  Mode");
+        lcd.setCursor(0, 1);
+        lcd.print(WiFi.softAPIP().toString());
+    }
 }
 
 /****************************************************
@@ -129,29 +172,46 @@ void onWebSocketEvent(AsyncWebSocket *server,
 }
 
 /****************************************************
- * Reset WiFi Button
+ * RESET BUTTON
+ * Short press : LCD backlight toggle
+ * Long press  : WiFi reset + reboot
  ****************************************************/
 void checkResetButton() {
-    static unsigned long startPress = 0;
+    static unsigned long pressStart = 0;
+    static bool longDone = false;
 
     if (digitalRead(RESET_PIN) == LOW) {
-        if (startPress == 0) startPress = millis();
 
-        lcd.setCursor(0, 1);
-        lcd.print("Hold RESET...   ");
+        if (pressStart == 0) {
+            pressStart = millis();
+            longDone = false;
+        }
 
-        if (millis() - startPress > 5000) {
+        if (millis() - pressStart >= RESET_LONG_MS && !longDone) {
+            longDone = true;
+
+            lcd.clear();
+            lcd.print("Resetting WiFi");
+            lcd.setCursor(0, 1);
+            lcd.print("Please wait");
+
             prefs.begin("wifi", false);
             prefs.clear();
             prefs.end();
 
-            lcd.clear();
-            lcd.print("WiFi Reset...");
-            delay(500);
+            delay(800);
             ESP.restart();
         }
     } 
-    else startPress = 0;
+    else {
+        if (pressStart > 0 && millis() - pressStart < RESET_LONG_MS) {
+            lcdBacklightOn = !lcdBacklightOn;
+            if (lcdBacklightOn) lcd.backlight();
+            else lcd.noBacklight();
+        }
+        pressStart = 0;
+        longDone = false;
+    }
 }
 
 /****************************************************
@@ -160,20 +220,6 @@ void checkResetButton() {
 void startAPMode() {
     WiFi.mode(WIFI_AP);
     WiFi.softAP(AP_SSID, AP_PASSWORD);
-
-    IPAddress ip = WiFi.softAPIP();
-
-    Serial.println("[AP] Access Point Mode Started");
-    Serial.print("[AP] SSID: ");
-    Serial.println(AP_SSID);
-    Serial.print("[AP] IP Address: ");
-    Serial.println(ip);    
-
-    lcd.clear();
-    lcd.print("AP Mode Ready");
-    lcd.setCursor(0, 1);
-    lcd.print(ip.toString());
-
     wifiConnected = false;
 }
 
@@ -184,19 +230,9 @@ bool tryConnectWiFi() {
     WiFi.mode(WIFI_STA);
     WiFi.begin(savedSSID.c_str(), savedPASS.c_str());
 
-    lcd.clear();
-    lcd.print("Connecting WiFi");
-
     for (int i = 0; i < 20; i++) {
         if (WiFi.status() == WL_CONNECTED) {
-            Serial.println("\n[WiFi] Connected");
-            Serial.print("[WiFi] IP Address: ");
-            Serial.println(WiFi.localIP());
-
-            lcd.clear();
-            lcd.print("WiFi Connected");
-            lcd.setCursor(0, 1);
-            lcd.print(WiFi.localIP().toString());
+            wifiConnected = true;
             return true;
         }
         delay(500);
@@ -208,9 +244,7 @@ bool tryConnectWiFi() {
  * Save WiFi Credentials
  ****************************************************/
 void handleWiFiSave(AsyncWebServerRequest *req) {
-    if (!req->hasParam("ssid", true) ||
-        !req->hasParam("pass", true)) 
-    {
+    if (!req->hasParam("ssid", true) || !req->hasParam("pass", true)) {
         req->send(400, "text/plain", "Missing SSID or PASS");
         return;
     }
@@ -276,7 +310,6 @@ String listFilesHTML() {
  ****************************************************/
 void setupAPI() {
 
-    /******** Root UI ********/
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *req){
         if (wifiConnected)
             req->send(SPIFFS, "/index_2.html", "text/html");
@@ -284,10 +317,8 @@ void setupAPI() {
             req->send(SPIFFS, "/index_1.html", "text/html");
     });
 
-    /******** WiFi Save ********/
     server.on("/savewifi", HTTP_POST, handleWiFiSave);
 
-    /******** Motor ********/
     server.on("/motor/forward", HTTP_GET, [](AsyncWebServerRequest *req){
         motorState = "Forward";
         digitalWrite(MOTOR_DIR1, HIGH);
@@ -324,7 +355,6 @@ void setupAPI() {
         } else req->send(400, "text/plain", "Missing value");
     });
 
-    /******** Relay ********/
     server.on("/relay/on", HTTP_GET, [](AsyncWebServerRequest *req){
         relayState = true;
         digitalWrite(RELAY_PIN, HIGH);
@@ -339,20 +369,15 @@ void setupAPI() {
         req->send(200, "text/plain", "Relay OFF");
     });
 
-    /******** Servo ********/
     server.on("/servo", HTTP_GET, [](AsyncWebServerRequest *req){
         if (req->hasParam("angle")) {
             servoAngle = constrain(req->getParam("angle")->value().toInt(), 0, 180);
             myServo.write(servoAngle);
             notifyClients();
             req->send(200, "text/plain", "Servo updated");
-        } 
-        else req->send(400, "text/plain", "Missing angle");
+        } else req->send(400, "text/plain", "Missing angle");
     });
 
-    /****************************************************
-     * FILE MANAGER ROUTES
-     ****************************************************/
     server.on("/upload", HTTP_GET, [](AsyncWebServerRequest *req){
         req->send(200, "text/html", listFilesHTML());
     });
@@ -367,10 +392,8 @@ void setupAPI() {
             String path = req->getParam("file")->value();
             SPIFFS.remove(path);
             req->send(200, "text/html", listFilesHTML());
-        }
-        else req->send(400, "text/plain", "Missing file parameter");
+        } else req->send(400, "text/plain", "Missing file parameter");
     });
-
 }
 
 /****************************************************
@@ -388,16 +411,13 @@ void setup() {
     pinMode(MOTOR_DIR1, OUTPUT);
     pinMode(MOTOR_DIR2, OUTPUT);
 
-    /******** SPIFFS ********/
     SPIFFS.begin(true);
 
-    /******** Load WiFi ********/
     prefs.begin("wifi", true);
     savedSSID = prefs.getString("ssid", "");
     savedPASS = prefs.getString("pass", "");
     prefs.end();
 
-    /******** LEDC PWM ********/
     ledc_timer_config_t tcfg = {
         .speed_mode = LEDC_LOW_SPEED_MODE,
         .duty_resolution = LEDC_TIMER_8_BIT,
@@ -418,22 +438,21 @@ void setup() {
     };
     ledc_channel_config(&ccfg);
 
-    /******** Servo ********/
     myServo.attach(SERVO_PIN);
     myServo.write(servoAngle);
 
-    /******** WiFi ********/
     if (savedSSID == "") startAPMode();
     else {
         wifiConnected = tryConnectWiFi();
         if (!wifiConnected) startAPMode();
     }
 
-    /******** Webserver ********/
     ws.onEvent(onWebSocketEvent);
     server.addHandler(&ws);
     setupAPI();
     server.begin();
+
+    showStatusLCD();
 }
 
 /****************************************************
@@ -442,4 +461,9 @@ void setup() {
 void loop() {
     ws.cleanupClients();
     checkResetButton();
+
+    if (millis() - lastLCDUpdate >= LCD_REFRESH_MS) {
+        lastLCDUpdate = millis();
+        if (lcdBacklightOn) showStatusLCD();
+    }
 }
