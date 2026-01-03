@@ -1,237 +1,1163 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>alphaCat Dashboard</title>
-
-<style>
-/* ===== GLOBAL ===== */
-body {
-    margin: 0;
-    font-family: Arial, sans-serif;
-    background: #111;
-    color: #fff;
-}
-
-/* ===== TOP BAR ===== */
-#topBar {
-    display: flex;
-    align-items: center;
-    height: 48px;
-    background: #1e1e1e;
-    border-bottom: 1px solid #2a2a2a;
-}
-
-#menuBtn {
-    width: 48px;
-    text-align: center;
-    font-size: 20px;
-    cursor: pointer;
-}
-
-#titleWrap {
-    flex: 1;
-    text-align: center;
-}
-
-#titleWrap h2 {
-    margin: 0;
-    font-size: 18px;
-    font-weight: 600;
-    opacity: 0.95;
-}
-
-/* ===== LAYOUT ===== */
-#container {
-    display: flex;
-    height: calc(100vh - 48px);
-}
-
-/* ===== SIDE PANEL ===== */
-#sidePanel {
-    width: 300px;
-    background: #1b1b1b;
-    padding: 15px;
-    display: none;
-    box-sizing: border-box;
-    border-right: 1px solid #2a2a2a;
-}
-
-#sidePanel h3 {
-    margin-top: 0;
-    font-size: 16px;
-}
-
-/* Form alignment (IMPORTANT) */
-#sidePanel input,
-#sidePanel select,
-#sidePanel button {
-    width: 100%;
-    box-sizing: border-box;
-    margin-bottom: 8px;
-    font-size: 14px;
-    padding: 6px;
-}
-
-#sidePanel button {
-    cursor: pointer;
-}
-
-.lock {
-    font-size: 12px;
-    color: #aaa;
-    margin-bottom: 6px;
-}
-
-/* ===== MAIN CONTENT ===== */
-#mainContent {
-    flex: 1;
-    text-align: center;
-    padding: 15px;
-}
-
-#videoCanvas {
-    border: 2px solid #fff;
-    cursor: crosshair;
-}
-
-#statusBar {
-    display: none;
-    background: #28a745;
-    padding: 8px;
-    margin: 10px auto;
-    border-radius: 4px;
-    width: fit-content;
-    font-size: 14px;
-}
-
-/* Detection buttons */
-.ctrlBtn {
-    padding: 8px 14px;
-    margin: 5px;
-    font-size: 14px;
-    cursor: pointer;
-}
-</style>
-</head>
-
-<body>
-
-<!-- ================= TOP BAR ================= -->
-<div id="topBar">
-    <span id="menuBtn" onclick="togglePanel()">☰</span>
-    <div id="titleWrap">
-        <h2>alphaCat – Agricultural Engineering</h2>
-    </div>
-</div>
-
-<div id="container">
-
-<!-- ================= SIDE PANEL ================= -->
-<div id="sidePanel">
-
-    <h3>Camera Source</h3>
-
-    <select id="camType">
-        <option value="usb">USB Camera</option>
-        <option value="rtsp">IP Camera (RTSP)</option>
-    </select>
-
-    <div id="rtspSummary" style="display:none;">
-        <div class="lock">🔒 RTSP credentials stored</div>
-        <button onclick="toggleRtspEdit()">Edit Camera</button>
-    </div>
-
-    <div id="rtspFields" style="display:none;">
-        <input id="rtspUser" placeholder="RTSP Username">
-        <input id="rtspPass" type="password" placeholder="RTSP Password">
-        <input id="rtspUrl" placeholder="ip:port/stream">
-        <button onclick="saveCamera()">Save Camera</button>
-        <button onclick="toggleRtspEdit()">Cancel</button>
-    </div>
-
-    <hr>
-
-    <h3>Sprayer Controller</h3>
-    <input id="esp_ip" placeholder="ESP32 IP (e.g. 192.168.1.88)">
-    <button onclick="saveESPIP()">Save IP</button>
-
-</div>
-
-<!-- ================= MAIN CONTENT ================= -->
-<div id="mainContent">
-
-    <img id="videoSource" src="/stream" style="display:none">
-    <canvas id="videoCanvas" width="640" height="480"></canvas>
-
-    <div id="statusBar"></div>
-
-    <br>
-    <!-- KEEP CORE CONTROLS -->
-    <button class="ctrlBtn" onclick="saveLine()">💾 Save Line</button>
-    <button class="ctrlBtn" onclick="startDetection()">🔍 Start Detection</button>
-    <button class="ctrlBtn" onclick="stopDetection()">🛑 Stop Detection</button>
-    <button class="ctrlBtn" onclick="sprayTest()">💦 Spray Test</button>
-
-</div>
-</div>
-
-<!-- ================= JS ================= -->
-<script src="/static/script.js"></script>
-
-<script>
-function togglePanel() {
-    const p = document.getElementById("sidePanel");
-    p.style.display = (p.style.display === "none" || p.style.display === "")
-        ? "block" : "none";
-}
-
-function closePanel() {
-    document.getElementById("sidePanel").style.display = "none";
-}
-
-const camType = document.getElementById("camType");
-const rtspSummary = document.getElementById("rtspSummary");
-const rtspFields = document.getElementById("rtspFields");
-
-camType.onchange = () => {
-    if (camType.value === "rtsp") {
-        rtspSummary.style.display = "block";
-        rtspFields.style.display = "none";
-    } else {
-        rtspSummary.style.display = "none";
-        rtspFields.style.display = "none";
-    }
-};
-
-function toggleRtspEdit() {
-    rtspFields.style.display =
-        rtspFields.style.display === "none" ? "block" : "none";
-}
-
-function saveCamera() {
-    const payload = {
-        type: camType.value,
-        device: "/dev/video0",
-        rtsp: {
-            username: document.getElementById("rtspUser").value,
-            password: document.getElementById("rtspPass").value,
-            url: document.getElementById("rtspUrl").value
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>alphaCat</title>
+    <style>
+        :root {
+            --system-blue: rgb(10, 132, 255);
+            --system-green: rgb(48, 209, 88);
+            --system-red: rgb(255, 69, 58);
+            --system-orange: rgb(255, 159, 10);
+            --system-indigo: rgb(94, 92, 230);
+            --system-white: rgb(255, 255, 255);
+            --system-black: rgb(0, 0, 0);
+            --system-gray-1: rgb(142, 142, 147);
+            --system-gray-2: rgb(99, 99, 102);
+            --system-gray-3: rgb(72, 72, 74);
+            --system-gray-4: rgb(58, 58, 60);
+            --system-gray-5: rgb(44, 44, 46);
+            --system-gray-6: rgb(28, 28, 30);
+            --card-bg: rgba(255, 255, 255, 0.95);
+            --overlay-bg: rgba(0, 0, 0, 0.7);
+            --sheet-bg: rgb(242, 242, 247);
         }
-    };
 
-    fetch("/set_camera", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify(payload)
-    })
-    .then(r => r.json())
-    .then(() => {
-        rtspFields.style.display = "none";
-        closePanel();           // ✅ AUTO-CLOSE
-    });
-}
-</script>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --card-bg: rgba(44, 44, 46, 0.95);
+                --overlay-bg: rgba(0, 0, 0, 0.8);
+                --sheet-bg: rgb(28, 28, 30);
+            }
+        }
 
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        html {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-size: 14px;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        body {
+            background: var(--system-black);
+            color: var(--system-white);
+            height: 100vh;
+            overflow: hidden;
+            position: fixed;
+            width: 100%;
+        }
+
+        /* Main App Layout */
+        .app-container {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Top Status Bar */
+        .status-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 8px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .status-icons {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--system-red);
+        }
+
+        .status-dot.active {
+            background: var(--system-green);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .time-display {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        /* Video Container */
+        .video-container {
+            flex: 1;
+            background: var(--system-black);
+            position: relative;
+            overflow: hidden;
+            margin-top: 44px; /* Status bar height */
+        }
+
+        #video-stream {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        /* Bottom Control Bar */
+        .control-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 16px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 1000;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+        }
+
+        .control-button {
+            background: none;
+            border: none;
+            color: var(--system-white);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 12px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            min-width: 80px;
+        }
+
+        .control-button:active {
+            background: rgba(255, 255, 255, 0.1);
+            transform: scale(0.95);
+        }
+
+        .control-button i {
+            font-size: 20px;
+            margin-bottom: 2px;
+        }
+
+        .control-button span {
+            font-size: 11px;
+            font-weight: 500;
+            opacity: 0.9;
+        }
+
+        .control-button.active {
+            background: var(--system-blue);
+        }
+
+        .control-button.danger i {
+            color: var(--system-red);
+        }
+
+        .control-button.success i {
+            color: var(--system-green);
+        }
+
+        /* Action Sheet (Modal) */
+        .action-sheet {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--sheet-bg);
+            border-radius: 24px 24px 0 0;
+            padding: 20px 0 40px;
+            z-index: 2000;
+            transform: translateY(100%);
+            transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+
+        .action-sheet.open {
+            transform: translateY(0);
+        }
+
+        .action-sheet-header {
+            padding: 0 20px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            position: sticky;
+            top: 0;
+            background: var(--sheet-bg);
+            z-index: 10;
+        }
+
+        .action-sheet-title {
+            font-size: 17px;
+            font-weight: 600;
+            color: var(--system-white);
+        }
+
+        .close-sheet {
+            background: none;
+            border: none;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--system-gray-1);
+        }
+
+        .close-sheet:active {
+            background: rgba(0, 0, 0, 0.1);
+        }
+
+        .action-sheet-content {
+            padding: 20px;
+        }
+
+        /* Form Elements */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--system-white);
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 16px;
+            background: rgba(0, 0, 0, 0.05);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            border-radius: 12px;
+            font-size: 16px;
+            color: var(--system-gray-1);
+            transition: all 0.2s ease;
+            -webkit-appearance: none;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--system-blue);
+            background: rgba(10, 132, 255, 0.05);
+        }
+
+        .form-control::placeholder {
+            color: var(--system-gray-1);
+        }
+
+        /* Segmented Control */
+        .segmented-control {
+            display: flex;
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 12px;
+            padding: 4px;
+            margin-bottom: 20px;
+        }
+
+        .segmented-button {
+            flex: 1;
+            padding: 12px;
+            text-align: center;
+            background: none;
+            border: none;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--system-gray-1);
+            cursor: pointer;
+            border-radius: 10px;
+            transition: all 0.2s ease;
+        }
+
+        .segmented-button:active {
+            background: var(--system-white);
+            color: var(--system-black);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .segmented-button.active {
+            background: var(--system-white);
+            color: var(--system-black);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Action Grid */
+        .action-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin: 20px 0;
+        }
+
+        .action-card {
+            background: var(--system-white);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            border-radius: 16px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .action-card:active {
+            transform: scale(0.98);
+            background: rgba(10, 132, 255, 0.1);
+        }
+
+        .action-card i {
+            font-size: 24px;
+            margin-bottom: 8px;
+            color: var(--system-blue);
+        }
+
+        .action-card.success i {
+            color: var(--system-green);
+        }
+
+        .action-card.danger i {
+            color: var(--system-red);
+        }
+
+        .action-card span {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--system-black);
+        }
+
+        /* Spray Control */
+        .spray-section {
+            text-align: center;
+            padding: 30px 20px;
+            background: linear-gradient(135deg, rgba(10, 132, 255, 0.1), rgba(48, 209, 88, 0.1));
+            border-radius: 20px;
+            margin: 20px 0;
+        }
+
+        .spray-button {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--system-red), #ff375f);
+            border: none;
+            color: var(--system-white);
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            margin: 0 auto;
+        }
+
+        .spray-button:active {
+            transform: scale(0.95);
+        }
+
+        .spray-button i {
+            font-size: 28px;
+        }
+
+        /* Detection Panel */
+        .detection-panel {
+            position: fixed;
+            top: 44px;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 12px 16px;
+            color: var(--system-white);
+            font-family: 'SF Mono', Menlo, Monaco, 'Courier New', monospace;
+            font-size: 11px;
+            max-height: 120px;
+            overflow-y: auto;
+            line-height: 1.4;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 999;
+        }
+
+        .detection-panel::-webkit-scrollbar {
+            width: 0;
+            background: transparent;
+        }
+
+        /* Info Cards */
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin: 20px 0;
+        }
+
+        .info-card {
+            background: var(--system-white);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            border-radius: 14px;
+            padding: 16px;
+        }
+
+        .info-label {
+            font-size: 11px;
+            color: var(--system-gray-1);
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .info-value {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--system-black);
+        }
+
+        /* Toast Notification */
+        .toast {
+            position: fixed;
+            top: 60px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-20px);
+            background: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 14px;
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            opacity: 0;
+            animation: slideDown 0.3s ease forwards;
+            z-index: 3000;
+            max-width: 90%;
+        }
+
+        .toast.success {
+            border-left: 4px solid var(--system-green);
+        }
+
+        .toast.error {
+            border-left: 4px solid var(--system-red);
+        }
+
+        .toast.info {
+            border-left: 4px solid var(--system-blue);
+        }
+
+        @keyframes slideDown {
+            to {
+                transform: translateX(-50%) translateY(0);
+                opacity: 1;
+            }
+        }
+
+        /* Drawing Overlay */
+        .drawing-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            cursor: crosshair;
+            z-index: 10;
+        }
+
+        /* Hide scrollbar but keep functionality */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        /* Swipe to close */
+        .swipe-indicator {
+            width: 36px;
+            height: 5px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 3px;
+            margin: 0 auto 20px;
+        }
+
+        /* Media Queries for Larger Screens */
+        @media (min-width: 768px) {
+            .control-button {
+                min-width: 100px;
+            }
+            
+            .action-sheet {
+                max-width: 400px;
+                left: 50%;
+                transform: translateX(-50%) translateY(100%);
+                border-radius: 20px;
+            }
+            
+            .action-sheet.open {
+                transform: translateX(-50%) translateY(0);
+            }
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Top Status Bar -->
+        <div class="status-bar">
+            <div class="status-icons">
+                <div class="status-dot" id="status-camera"></div>
+                <div class="status-dot" id="status-detection"></div>
+                <div class="status-dot" id="status-sprayer"></div>
+            </div>
+            <div class="time-display" id="time-display">--:--</div>
+        </div>
+
+        <!-- Video Stream -->
+        <div class="video-container">
+            <img id="video-stream" src="" alt="Camera Feed">
+            <div class="drawing-overlay" id="drawing-overlay" style="display: none;"></div>
+        </div>
+
+        <!-- Detection Panel -->
+        <div class="detection-panel" id="detection-panel">
+            <div id="detection-info">Waiting for detection data...</div>
+        </div>
+
+        <!-- Bottom Control Bar -->
+        <div class="control-bar">
+            <button class="control-button" onclick="showCameraSheet()">
+                <i class="fas fa-camera"></i>
+                <span>Camera</span>
+            </button>
+            <button class="control-button success" onclick="startDetection()">
+                <i class="fas fa-play"></i>
+                <span>Start</span>
+            </button>
+            <button class="control-button danger" onclick="stopDetection()">
+                <i class="fas fa-stop"></i>
+                <span>Stop</span>
+            </button>
+            <button class="control-button" onclick="showSprayerSheet()">
+                <i class="fas fa-shower"></i>
+                <span>Sprayer</span>
+            </button>
+            <button class="control-button" onclick="showSystemSheet()">
+                <i class="fas fa-info-circle"></i>
+                <span>System</span>
+            </button>
+        </div>
+
+        <!-- Camera Action Sheet -->
+        <div class="action-sheet" id="camera-sheet">
+            <div class="swipe-indicator"></div>
+            <div class="action-sheet-header">
+                <div class="action-sheet-title">Camera Settings</div>
+                <button class="close-sheet" onclick="hideAllSheets()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="action-sheet-content no-scrollbar">
+                <div class="segmented-control">
+                    <button class="segmented-button active" onclick="selectCameraType('usb')">USB</button>
+                    <button class="segmented-button" onclick="selectCameraType('rtsp')">RTSP</button>
+                </div>
+                
+                <div id="usb-config">
+                    <div class="form-group">
+                        <label class="form-label">USB Device</label>
+                        <input type="text" class="form-control" id="usb-device" placeholder="/dev/video0">
+                    </div>
+                </div>
+                
+                <div id="rtsp-config" style="display: none;">
+                    <div class="form-group">
+                        <label class="form-label">RTSP URL</label>
+                        <input type="text" class="form-control" id="rtsp-url" placeholder="192.168.1.100:554">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Username</label>
+                        <input type="text" class="form-control" id="rtsp-username" placeholder="admin">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Password</label>
+                        <input type="password" class="form-control" id="rtsp-password" placeholder="••••••••">
+                    </div>
+                </div>
+                
+                <div class="action-grid">
+                    <div class="action-card" onclick="saveCameraConfig()">
+                        <i class="fas fa-save"></i>
+                        <span>Save Settings</span>
+                    </div>
+                    <div class="action-card" id="draw-line-btn" onclick="drawLineMode()">
+                        <i class="fas fa-draw-polygon"></i>
+                        <span>Draw Line</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sprayer Action Sheet -->
+        <div class="action-sheet" id="sprayer-sheet">
+            <div class="swipe-indicator"></div>
+            <div class="action-sheet-header">
+                <div class="action-sheet-title">Sprayer Control</div>
+                <button class="close-sheet" onclick="hideAllSheets()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="action-sheet-content no-scrollbar">
+                <div class="form-group">
+                    <label class="form-label">ESP32 IP Address</label>
+                    <input type="text" class="form-control" id="esp-ip" placeholder="192.168.1.200">
+                </div>
+                
+                <div class="action-card" onclick="saveSprayerIP()">
+                    <i class="fas fa-save"></i>
+                    <span>Save IP Address</span>
+                </div>
+                
+                <div class="spray-section">
+                    <p style="color: var(--system-gray-1); margin-bottom: 16px; font-size: 13px;">Manual Spray Test</p>
+                    <button class="spray-button" onclick="triggerSpray()">
+                        <i class="fas fa-spray-can"></i>
+                        SPRAY
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- System Action Sheet -->
+        <div class="action-sheet" id="system-sheet">
+            <div class="swipe-indicator"></div>
+            <div class="action-sheet-header">
+                <div class="action-sheet-title">System Information</div>
+                <button class="close-sheet" onclick="hideAllSheets()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="action-sheet-content no-scrollbar">
+                <div class="info-grid">
+                    <div class="info-card">
+                        <div class="info-label">Camera</div>
+                        <div class="info-value" id="info-camera">Offline</div>
+                    </div>
+                    <div class="info-card">
+                        <div class="info-label">Detection</div>
+                        <div class="info-value" id="info-detection">Idle</div>
+                    </div>
+                    <div class="info-card">
+                        <div class="info-label">Sprayer</div>
+                        <div class="info-value" id="info-sprayer">N/A</div>
+                    </div>
+                    <div class="info-card">
+                        <div class="info-label">Line</div>
+                        <div class="info-value" id="info-line">Not Set</div>
+                    </div>
+                </div>
+                
+                <div class="action-grid">
+                    <div class="action-card" onclick="refreshSystem()">
+                        <i class="fas fa-sync-alt"></i>
+                        <span>Refresh</span>
+                    </div>
+                    <div class="action-card" onclick="exportConfig()">
+                        <i class="fas fa-download"></i>
+                        <span>Export</span>
+                    </div>
+                    <div class="action-card" onclick="resetLine()">
+                        <i class="fas fa-undo"></i>
+                        <span>Reset Line</span>
+                    </div>
+                    <div class="action-card" onclick="restartSystem()">
+                        <i class="fas fa-redo"></i>
+                        <span>Restart</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global state
+        let isDrawing = false;
+        let linePoints = [];
+        let currentCameraType = 'usb';
+        let configData = {};
+        let currentSheet = null;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            loadConfig();
+            startVideoStream();
+            startStatusUpdates();
+            updateTime();
+            
+            // Update time every minute
+            setInterval(updateTime, 60000);
+            
+            // Setup touch events for swipe to close
+            setupSwipeGestures();
+        });
+
+        // Update time display
+        function updateTime() {
+            const now = new Date();
+            const timeStr = now.getHours().toString().padStart(2, '0') + ':' + 
+                          now.getMinutes().toString().padStart(2, '0');
+            document.getElementById('time-display').textContent = timeStr;
+        }
+
+        // Setup swipe gestures for action sheets
+        function setupSwipeGestures() {
+            const sheets = document.querySelectorAll('.action-sheet');
+            sheets.forEach(sheet => {
+                let startY = 0;
+                let currentY = 0;
+                
+                sheet.addEventListener('touchstart', e => {
+                    startY = e.touches[0].clientY;
+                    currentY = startY;
+                });
+                
+                sheet.addEventListener('touchmove', e => {
+                    currentY = e.touches[0].clientY;
+                    const diff = currentY - startY;
+                    if (diff > 0) {
+                        sheet.style.transform = `translateY(${diff}px)`;
+                    }
+                });
+                
+                sheet.addEventListener('touchend', e => {
+                    const diff = currentY - startY;
+                    if (diff > 50) {
+                        hideAllSheets();
+                    } else {
+                        sheet.style.transform = '';
+                    }
+                });
+            });
+        }
+
+        // Show action sheet
+        function showSheet(sheetId) {
+            hideAllSheets();
+            currentSheet = document.getElementById(sheetId);
+            currentSheet.classList.add('open');
+            document.body.style.overflow = 'hidden';
+        }
+
+        // Hide all sheets
+        function hideAllSheets() {
+            document.querySelectorAll('.action-sheet').forEach(sheet => {
+                sheet.classList.remove('open');
+                sheet.style.transform = '';
+            });
+            currentSheet = null;
+            document.body.style.overflow = '';
+        }
+
+        // Show specific sheets
+        function showCameraSheet() { showSheet('camera-sheet'); }
+        function showSprayerSheet() { showSheet('sprayer-sheet'); }
+        function showSystemSheet() { showSheet('system-sheet'); }
+
+        // Load configuration
+        async function loadConfig() {
+            try {
+                const response = await fetch('/get_config');
+                configData = await response.json();
+                updateUIFromConfig();
+                updateStatus('status-camera', true);
+                updateInfo('info-camera', 'Online');
+            } catch (error) {
+                console.error('Failed to load config:', error);
+                updateStatus('status-camera', false);
+                updateInfo('info-camera', 'Offline');
+            }
+        }
+
+        // Update UI from config
+        function updateUIFromConfig() {
+            const camCfg = configData.camera || {};
+            currentCameraType = camCfg.type || 'usb';
+            
+            // Update camera type
+            document.querySelectorAll('.segmented-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector(`.segmented-button:nth-child(${currentCameraType === 'usb' ? 1 : 2})`).classList.add('active');
+            
+            // Show/hide config sections
+            if (currentCameraType === 'usb') {
+                document.getElementById('usb-config').style.display = 'block';
+                document.getElementById('rtsp-config').style.display = 'none';
+                document.getElementById('usb-device').value = camCfg.device || '/dev/video0';
+            } else {
+                document.getElementById('usb-config').style.display = 'none';
+                document.getElementById('rtsp-config').style.display = 'block';
+                document.getElementById('rtsp-url').value = camCfg.rtsp?.url || '';
+                document.getElementById('rtsp-username').value = '';
+                document.getElementById('rtsp-password').value = '';
+            }
+            
+            // Update sprayer IP
+            document.getElementById('esp-ip').value = configData.esp32_ip || '';
+            
+            // Update status
+            const hasLine = configData.line && configData.line.length === 4;
+            updateStatus('status-sprayer', !!configData.esp32_ip);
+            updateInfo('info-sprayer', configData.esp32_ip ? 'Connected' : 'N/A');
+            updateInfo('info-line', hasLine ? 'Set' : 'Not Set');
+        }
+
+        // Start video stream
+        function startVideoStream() {
+            const videoElement = document.getElementById('video-stream');
+            videoElement.src = '/stream?' + new Date().getTime();
+            
+            videoElement.onload = function() {
+                updateStatus('status-camera', true);
+                updateInfo('info-camera', 'Online');
+            };
+            
+            videoElement.onerror = function() {
+                updateStatus('status-camera', false);
+                updateInfo('info-camera', 'Offline');
+                setTimeout(() => {
+                    videoElement.src = '/stream?' + new Date().getTime();
+                }, 2000);
+            };
+        }
+
+        // Update status indicators
+        function updateStatus(elementId, isActive) {
+            const dot = document.getElementById(elementId);
+            if (dot) {
+                dot.className = 'status-dot ' + (isActive ? 'active' : '');
+            }
+        }
+
+        // Update info display
+        function updateInfo(elementId, value) {
+            const element = document.getElementById(elementId);
+            if (element) element.textContent = value;
+        }
+
+        // Start status updates
+        function startStatusUpdates() {
+            setInterval(async () => {
+                try {
+                    const response = await fetch('/yolo_data');
+                    const data = await response.json();
+                    updateDetectionInfo(data);
+                    updateStatus('status-detection', Object.keys(data).length > 0);
+                    updateInfo('info-detection', Object.keys(data).length > 0 ? 'Active' : 'Idle');
+                } catch (error) {
+                    console.error('Failed to fetch detection data:', error);
+                    updateStatus('status-detection', false);
+                    updateInfo('info-detection', 'Error');
+                }
+            }, 1000);
+        }
+
+        // Update detection info
+        function updateDetectionInfo(data) {
+            const infoElement = document.getElementById('detection-info');
+            if (Object.keys(data).length > 0) {
+                const formatted = JSON.stringify(data, null, 2);
+                infoElement.innerHTML = formatted.replace(/\n/g, '<br>').replace(/ /g, '&nbsp;');
+            } else {
+                infoElement.textContent = 'No objects detected';
+            }
+        }
+
+        // Camera type selection
+        function selectCameraType(type) {
+            currentCameraType = type;
+            
+            // Update UI
+            document.querySelectorAll('.segmented-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            if (type === 'usb') {
+                document.getElementById('usb-config').style.display = 'block';
+                document.getElementById('rtsp-config').style.display = 'none';
+            } else {
+                document.getElementById('usb-config').style.display = 'none';
+                document.getElementById('rtsp-config').style.display = 'block';
+            }
+        }
+
+        // Save camera configuration
+        async function saveCameraConfig() {
+            const camConfig = { type: currentCameraType };
+            
+            if (currentCameraType === 'usb') {
+                camConfig.device = document.getElementById('usb-device').value || '/dev/video0';
+            } else {
+                camConfig.rtsp = {
+                    url: document.getElementById('rtsp-url').value,
+                    username: document.getElementById('rtsp-username').value,
+                    password: document.getElementById('rtsp-password').value
+                };
+            }
+            
+            try {
+                const response = await fetch('/set_camera', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(camConfig)
+                });
+                
+                if (response.ok) {
+                    showToast('Camera settings saved');
+                    hideAllSheets();
+                    setTimeout(() => {
+                        loadConfig();
+                        startVideoStream();
+                    }, 1000);
+                } else {
+                    showToast('Failed to save settings', 'error');
+                }
+            } catch (error) {
+                showToast('Network error', 'error');
+            }
+        }
+
+        // Save sprayer IP
+        async function saveSprayerIP() {
+            const ip = document.getElementById('esp-ip').value;
+            
+            if (!ip) {
+                showToast('Enter IP address', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/set_esp_ip', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ip })
+                });
+                
+                if (response.ok) {
+                    showToast('IP saved');
+                    hideAllSheets();
+                    loadConfig();
+                } else {
+                    showToast('Failed to save IP', 'error');
+                }
+            } catch (error) {
+                showToast('Network error', 'error');
+            }
+        }
+
+        // Draw line mode
+        function drawLineMode() {
+            if (!isDrawing) {
+                isDrawing = true;
+                linePoints = [];
+                
+                const overlay = document.getElementById('drawing-overlay');
+                overlay.style.display = 'block';
+                overlay.onclick = handleLineDraw;
+                
+                hideAllSheets();
+                showToast('Tap two points on video', 'info');
+            } else {
+                cancelLineDraw();
+            }
+        }
+
+        // Handle line drawing
+        function handleLineDraw(event) {
+            const rect = event.target.getBoundingClientRect();
+            const x = (event.clientX - rect.left) / rect.width;
+            const y = (event.clientY - rect.top) / rect.height;
+            
+            linePoints.push(x, y);
+            
+            if (linePoints.length === 4) {
+                saveLine();
+                cancelLineDraw();
+            } else if (linePoints.length === 2) {
+                showToast('Tap second point', 'info');
+            }
+        }
+
+        // Cancel line drawing
+        function cancelLineDraw() {
+            isDrawing = false;
+            const overlay = document.getElementById('drawing-overlay');
+            overlay.style.display = 'none';
+            overlay.onclick = null;
+            linePoints = [];
+        }
+
+        // Save line
+        async function saveLine() {
+            try {
+                const response = await fetch('/save_line', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ line: linePoints })
+                });
+                
+                if (response.ok) {
+                    showToast('Line saved');
+                    loadConfig();
+                } else {
+                    showToast('Failed to save line', 'error');
+                }
+            } catch (error) {
+                showToast('Network error', 'error');
+            }
+        }
+
+        // Reset line
+        function resetLine() {
+            linePoints = [];
+            updateInfo('info-line', 'Not Set');
+            showToast('Line reset');
+            hideAllSheets();
+        }
+
+        // Detection controls
+        async function startDetection() {
+            try {
+                const response = await fetch('/start_detection');
+                if (response.ok) {
+                    showToast('Detection started');
+                }
+            } catch (error) {
+                showToast('Failed to start', 'error');
+            }
+        }
+
+        async function stopDetection() {
+            try {
+                const response = await fetch('/stop_detection');
+                if (response.ok) {
+                    showToast('Detection stopped');
+                }
+            } catch (error) {
+                showToast('Failed to stop', 'error');
+            }
+        }
+
+        // Manual spray
+        async function triggerSpray() {
+            try {
+                const response = await fetch('/spray_test');
+                if (response.ok) {
+                    showToast('Spray triggered');
+                    const sprayBtn = document.querySelector('.spray-button');
+                    sprayBtn.style.transform = 'scale(0.95)';
+                    setTimeout(() => {
+                        sprayBtn.style.transform = 'scale(1)';
+                    }, 100);
+                }
+            } catch (error) {
+                showToast('Failed to spray', 'error');
+            }
+        }
+
+        // System actions
+        function refreshSystem() {
+            loadConfig();
+            startVideoStream();
+            showToast('System refreshed');
+            hideAllSheets();
+        }
+
+        function restartSystem() {
+            if (confirm('Restart system?')) {
+                showToast('Restarting...', 'info');
+                setTimeout(() => location.reload(), 1000);
+            }
+        }
+
+        function exportConfig() {
+            const dataStr = JSON.stringify(configData, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            const url = URL.createObjectURL(dataBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'config.json';
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('Config exported');
+        }
+
+        // Show toast
+        function showToast(message, type = 'success') {
+            // Remove existing
+            document.querySelectorAll('.toast').forEach(toast => toast.remove());
+            
+            // Create toast
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `
+                <i class="fas fa-${type === 'error' ? 'exclamation-circle' : 'check-circle'}"></i>
+                <span>${message}</span>
+            `;
+            
+            document.body.appendChild(toast);
+            
+            // Remove
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 2000);
+        }
+
+        // Handle back button
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && currentSheet) {
+                hideAllSheets();
+            }
+        });
+    </script>
 </body>
 </html>
